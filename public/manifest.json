@@ -1,0 +1,22 @@
+{
+  "name": "DEE BAKES - Artisan Bakery & Treats",
+  "short_name": "DEE BAKES",
+  "description": "Premium artisan food and bakery brand in Lagos, Nigeria. Made with love. Crafted to delight.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#291B17",
+  "theme_color": "#291B17",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
