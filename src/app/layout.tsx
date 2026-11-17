@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { CartProvider } from '@/context/CartContext';
+import { CustomerAuthProvider } from '@/context/CustomerAuthContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { CartDrawer } from '@/components/cart/CartDrawer';
@@ -80,14 +81,16 @@ export default function RootLayout({
       </head>
       <body className="antialiased min-h-screen flex flex-col bg-ivory dark:bg-espresso-950 text-espresso dark:text-ivory selection:bg-caramel selection:text-white">
         <ThemeProvider>
-          <CartProvider>
-            <CloudSyncInitializer />
-            <Navbar />
-            <main className="flex-grow">{children}</main>
-            <Footer />
-            <CartDrawer />
-            <WhatsAppButton />
-          </CartProvider>
+          <CustomerAuthProvider>
+            <CartProvider>
+              <CloudSyncInitializer />
+              <Navbar />
+              <main className="flex-grow">{children}</main>
+              <Footer />
+              <CartDrawer />
+              <WhatsAppButton />
+            </CartProvider>
+          </CustomerAuthProvider>
         </ThemeProvider>
       </body>
     </html>

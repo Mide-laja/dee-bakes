@@ -101,6 +101,7 @@ export interface OrderItem {
 export interface Order {
   id: string;
   order_reference: string;
+  user_id?: string;
   customer_id?: string;
   customer_name: string;
   customer_phone: string;
@@ -129,6 +130,7 @@ export interface Order {
 
 export interface Customer {
   id: string;
+  user_id?: string;
   name: string;
   phone: string;
   email?: string;

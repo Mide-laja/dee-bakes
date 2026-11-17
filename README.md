@@ -224,6 +224,55 @@ The application incorporates a Data Access Layer:
 
 ---
 
+## 🔐 Customer Authentication & Account Management System
+
+DEE BAKES features an exclusive customer registration, login, and account management portal powered by **Supabase Authentication**:
+
+### 1. Routes & Customer Experience:
+* **Registration (`/signup`):**
+  * Collects full name, email address, phone number, password, and confirmation.
+  * Enforces password security requirements (minimum 8 characters, letters & numbers).
+  * Interactive password visibility toggles and agreement to Terms & Privacy Policy.
+  * Handles Supabase email verification workflows.
+* **Customer Login (`/login`):**
+  * Secure sign in with email and password.
+  * "Remember me" option and password visibility toggle.
+  * Forgot password recovery link.
+  * Automatic redirection to `/account` or prior destination (e.g. `/checkout`).
+* **Password Recovery (`/forgot-password` & `/reset-password`):**
+  * Request password reset emails securely via Supabase Auth.
+  * Dedicated reset page for customers to set new credentials with real-time feedback.
+* **Customer Dashboard (`/account`):**
+  * **Account Overview:** Personal welcome banner, lifetime order stats, active kitchen orders, and total spent.
+  * **My Orders:** Complete customer order history with real-time status badges, itemized order breakdowns, delivery details, and bank transfer references.
+  * **Order Details Modal:** Deep-dive into ordered items, cake customisation specs, direct WhatsApp support link, and live tracking.
+  * **Profile & Security:** Edit customer name, phone number, secure email update, and password changes.
+  * **Secure Logout:** Instant session termination with return to homepage.
+
+### 2. Seamless Order Integration & Guest Checkout:
+* **Authenticated Checkout:** Logged-in customers have their contact information pre-filled and their orders automatically linked to their authenticated `user_id` so they appear immediately in `/account`.
+* **Guest Checkout Retained:** Visitors can still checkout smoothly without creating an account—guest orders remain 100% supported without forced registration.
+* **Customer Privacy:** Strict data isolation prevents customers from viewing other clients' orders or profiles.
+
+### 3. Strict Admin Studio Separation:
+* Customer registration **never** grants access to DEE BAKES Studio.
+* Admin authentication (`/admin/login`) remains strictly isolated in `AdminAuthContext` and verified against `public.admin_users`.
+
+### 4. Supabase Setup & Migration:
+1. Run the migration script in your Supabase SQL Editor:
+   ```sql
+   -- Found at: supabase/customer_auth_migration.sql
+   ```
+2. In the **Supabase Dashboard** ➔ **Authentication** ➔ **URL Configuration**:
+   * **Site URL:** `https://your-domain.vercel.app` (or `http://localhost:3000` for local dev)
+   * **Redirect URLs:**
+     * `https://your-domain.vercel.app/account`
+     * `https://your-domain.vercel.app/reset-password`
+     * `http://localhost:3000/account`
+     * `http://localhost:3000/reset-password`
+
+---
+
 ## 📱 Progressive Web App (PWA) Mobile Installation
 
 * **For Dee (Business Owner):** Open `/admin` on your smartphone browser (Safari on iPhone, Chrome on Android), tap **Share / Menu** ➔ **Add to Home Screen**. DEE BAKES STUDIO installs as a standalone app with the DB Monogram icon and full-screen experience.

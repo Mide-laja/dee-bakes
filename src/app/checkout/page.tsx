@@ -17,8 +17,11 @@ import {
   ShieldCheck,
   AlertCircle,
   MessageCircle,
+  CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { useCustomerAuth } from '@/context/CustomerAuthContext';
 import { formatCurrency, generateOrderReference } from '@/lib/utils';
 import { DBStore } from '@/lib/store';
 import { DeliveryZone, OrderType, PaymentMethod } from '@/types';
@@ -26,13 +29,23 @@ import { DeliveryZone, OrderType, PaymentMethod } from '@/types';
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, subtotal, clearCart } = useCart();
+  const { user, customerProfile } = useCustomerAuth();
   const settings = DBStore.getSettings();
   const deliveryZones = DBStore.getDeliveryZones();
 
-  // Form fields
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
+  // Form fields - prefilled if customer is logged in
+  const [customerName, setCustomerName] = useState(user?.fullName || '');
+  const [customerPhone, setCustomerPhone] = useState(user?.phone || '');
+  const [customerEmail, setCustomerEmail] = useState(user?.email || '');
+
+  // Update fields if user auth resolves after mount
+  useEffect(() => {
+    if (user) {
+      if (!customerName) setCustomerName(user.fullName || '');
+      if (!customerPhone) setCustomerPhone(user.phone || '');
+      if (!customerEmail) setCustomerEmail(user.email || '');
+    }
+  }, [user]);
   const [orderType, setOrderType] = useState<OrderType>('delivery');
   const [selectedZoneId, setSelectedZoneId] = useState<string>(
     deliveryZones.find((z) => z.is_active && z.fee > 0)?.id || ''
@@ -102,6 +115,8 @@ export default function CheckoutPage() {
 
       const newOrder = DBStore.createOrder({
         order_reference: orderRef,
+        user_id: user?.id,
+        customer_id: customerProfile?.id,
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim(),
         customer_email: customerEmail.trim() || undefined,
@@ -194,6 +209,39 @@ export default function CheckoutPage() {
           <div className="lg:col-span-7 space-y-8">
             {/* 1. Customer Information */}
             <div className="p-6 sm:p-8 rounded-3xl bg-white/80 dark:bg-espresso-800/80 border border-caramel/20 shadow-warm space-y-5">
+              {/* Account Connection Status Banner */}
+              {user ? (
+                <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-xs flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span>
+                      Signed in as <strong>{user.fullName}</strong>. This order will automatically link to your account dashboard.
+                    </span>
+                  </div>
+                  <Link
+                    href="/account"
+                    className="underline font-semibold hover:text-emerald-600 shrink-0"
+                  >
+                    View Account
+                  </Link>
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-2xl bg-caramel/10 border border-caramel/20 text-espresso/80 dark:text-ivory/80 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-caramel shrink-0" />
+                    <span>
+                      Checking out as <strong>Guest</strong>. Have an account?
+                    </span>
+                  </div>
+                  <Link
+                    href="/login?redirect=/checkout"
+                    className="text-caramel font-semibold underline hover:text-caramel-600 shrink-0"
+                  >
+                    Log In to Link Order
+                  </Link>
+                </div>
+              )}
+
               <h3 className="font-serif text-xl font-bold text-espresso dark:text-ivory flex items-center gap-2">
                 <span>1. Contact Information</span>
               </h3>

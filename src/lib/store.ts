@@ -428,6 +428,16 @@ export const DBStore = {
     );
   },
 
+  getOrdersForCustomer(userId?: string, email?: string, phone?: string): Order[] {
+    const orders = this.getOrders();
+    return orders.filter((o) => {
+      if (userId && o.user_id && o.user_id === userId) return true;
+      if (email && o.customer_email && o.customer_email.toLowerCase() === email.toLowerCase()) return true;
+      if (phone && o.customer_phone && o.customer_phone.replace(/\D/g, '') === phone.replace(/\D/g, '')) return true;
+      return false;
+    });
+  },
+
   createOrder(orderData: Omit<Order, 'id' | 'created_at' | 'updated_at'>): Order {
     const orders = this.getOrders();
     const newOrder: Order = {
@@ -446,6 +456,8 @@ export const DBStore = {
         .from('orders')
         .insert({
           order_reference: newOrder.order_reference,
+          user_id: newOrder.user_id,
+          customer_id: newOrder.customer_id,
           customer_name: newOrder.customer_name,
           customer_phone: newOrder.customer_phone,
           customer_email: newOrder.customer_email,
