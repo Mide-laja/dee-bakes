@@ -22,8 +22,8 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   hero_headline: 'Good food. Beautiful moments.',
   hero_subheadline:
     'Freshly made delights, crafted with love. Discover your next favourite treat.',
-  hero_video_url: 'https://assets.mixkit.co/videos/preview/mixkit-cutting-a-freshly-made-sandwich-wrap-41408-large.mp4',
-  hero_poster_url: 'https://images.unsplash.com/photo-1529042410759-befb1204b468?auto=format&fit=crop&w=1600&q=80',
+  hero_video_url: '/videos/hero-shawarma.mp4',
+  hero_poster_url: '/images/hero-shawarma-cinematic.jpg',
   about_story:
     'DEE BAKES was born out of a deep reverence for exceptional baking and the warmth of Nigerian hospitality. Every batch of our mouth-watering shawarmas, hand-twisted brioche doughnuts, and celebratory cakes is crafted with uncompromised artistry, premium ingredients, and boundless love.',
   opening_hours: 'Monday – Saturday: 8:00 AM – 8:30 PM | Sunday: 11:00 AM – 6:00 PM',
