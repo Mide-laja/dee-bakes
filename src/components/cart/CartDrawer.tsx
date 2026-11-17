@@ -6,12 +6,12 @@ import Image from 'next/image';
 import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, Sparkles } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { formatCurrency } from '@/lib/utils';
-import { DBStore } from '@/lib/store';
+import { DBStore, useStoreSettings } from '@/lib/store';
 
 export const CartDrawer: React.FC = () => {
   const { isCartOpen, closeCart, items, updateQuantity, removeFromCart, subtotal, itemCount } =
     useCart();
-  const settings = DBStore.getSettings();
+  const settings = useStoreSettings();
 
   if (!isCartOpen) return null;
 

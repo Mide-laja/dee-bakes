@@ -14,7 +14,7 @@ import {
   MessageCircle,
   ArrowRight,
 } from 'lucide-react';
-import { DBStore } from '@/lib/store';
+import { DBStore, useStoreSettings } from '@/lib/store';
 import { formatCurrency, formatDate, createWhatsAppLink } from '@/lib/utils';
 import { Order, OrderStatus } from '@/types';
 
@@ -25,7 +25,7 @@ function TrackContent() {
   const [query, setQuery] = useState(initialRef);
   const [searchedOrder, setSearchedOrder] = useState<Order | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
-  const settings = DBStore.getSettings();
+  const settings = useStoreSettings();
 
   useEffect(() => {
     if (initialRef) {

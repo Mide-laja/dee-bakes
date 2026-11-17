@@ -21,6 +21,9 @@ import {
   ShieldCheck,
   Truck,
   Sliders,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { DBStore, storeEvents } from '@/lib/store';
 import { formatCurrency } from '@/lib/utils';
@@ -35,33 +38,38 @@ function MoreContent() {
   const [categories, setCategories] = useState<Category[]>(DBStore.getCategories());
   const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>(DBStore.getDeliveryZones());
   const [orders, setOrders] = useState(DBStore.getOrders());
+  
+  // Persistence state
+  const [isSaving, setIsSaving] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isLoadingCloud, setIsLoadingCloud] = useState(false);
 
   // Form states for settings
-  const [bankName, setBankName] = useState(settings.bank_name);
-  const [bankAccountName, setBankAccountName] = useState(settings.bank_account_name);
-  const [bankAccountNumber, setBankAccountNumber] = useState(settings.bank_account_number);
-  const [bankInstructions, setBankInstructions] = useState(settings.bank_payment_instructions);
-  const [enableCod, setEnableCod] = useState(settings.enable_cash_on_delivery);
+  const [bankName, setBankName] = useState(settings.bank_name || '');
+  const [bankAccountName, setBankAccountName] = useState(settings.bank_account_name || '');
+  const [bankAccountNumber, setBankAccountNumber] = useState(settings.bank_account_number || '');
+  const [bankInstructions, setBankInstructions] = useState(settings.bank_payment_instructions || '');
+  const [enableCod, setEnableCod] = useState(settings.enable_cash_on_delivery || false);
 
   // Business settings
-  const [storeName, setStoreName] = useState(settings.store_name);
-  const [tagline, setTagline] = useState(settings.tagline);
-  const [phoneNumber, setPhoneNumber] = useState(settings.phone_number);
-  const [whatsappNumber, setWhatsappNumber] = useState(settings.whatsapp_number);
-  const [physicalAddress, setPhysicalAddress] = useState(settings.physical_address);
-  const [minOrder, setMinOrder] = useState(settings.min_order_amount.toString());
-  const [pauseOrders, setPauseOrders] = useState(settings.pause_orders);
-  const [pauseMessage, setPauseMessage] = useState(settings.pause_message);
-  const [openingHours, setOpeningHours] = useState(settings.opening_hours);
+  const [storeName, setStoreName] = useState(settings.store_name || '');
+  const [tagline, setTagline] = useState(settings.tagline || '');
+  const [phoneNumber, setPhoneNumber] = useState(settings.phone_number || '');
+  const [whatsappNumber, setWhatsappNumber] = useState(settings.whatsapp_number || '');
+  const [physicalAddress, setPhysicalAddress] = useState(settings.physical_address || '');
+  const [minOrder, setMinOrder] = useState((settings.min_order_amount ?? 3000).toString());
+  const [pauseOrders, setPauseOrders] = useState(settings.pause_orders || false);
+  const [pauseMessage, setPauseMessage] = useState(settings.pause_message || '');
+  const [openingHours, setOpeningHours] = useState(settings.opening_hours || '');
 
   // Storefront settings
-  const [heroHeadline, setHeroHeadline] = useState(settings.hero_headline);
-  const [heroSubheadline, setHeroSubheadline] = useState(settings.hero_subheadline);
-  const [heroVideoUrl, setHeroVideoUrl] = useState(settings.hero_video_url);
-  const [heroPosterUrl, setHeroPosterUrl] = useState(settings.hero_poster_url);
-  const [aboutStory, setAboutStory] = useState(settings.about_story);
-  const [instagramHandle, setInstagramHandle] = useState(settings.instagram_handle);
+  const [heroHeadline, setHeroHeadline] = useState(settings.hero_headline || '');
+  const [heroSubheadline, setHeroSubheadline] = useState(settings.hero_subheadline || '');
+  const [heroVideoUrl, setHeroVideoUrl] = useState(settings.hero_video_url || '');
+  const [heroPosterUrl, setHeroPosterUrl] = useState(settings.hero_poster_url || '');
+  const [aboutStory, setAboutStory] = useState(settings.about_story || '');
+  const [instagramHandle, setInstagramHandle] = useState(settings.instagram_handle || '');
 
   // Category modal
   const [newCatName, setNewCatName] = useState('');
@@ -72,28 +80,111 @@ function MoreContent() {
   const [editingZone, setEditingZone] = useState<DeliveryZone | null>(null);
   const [zoneFeeInput, setZoneFeeInput] = useState('');
 
+  // Helper to synchronize all controlled input states when fresh cloud settings arrive
+  const populateFormFields = (s: StoreSettings) => {
+    if (!s) return;
+    setBankName(s.bank_name ?? '');
+    setBankAccountName(s.bank_account_name ?? '');
+    setBankAccountNumber(s.bank_account_number ?? '');
+    setBankInstructions(s.bank_payment_instructions ?? '');
+    setEnableCod(!!s.enable_cash_on_delivery);
+
+    setStoreName(s.store_name ?? '');
+    setTagline(s.tagline ?? '');
+    setPhoneNumber(s.phone_number ?? '');
+    setWhatsappNumber(s.whatsapp_number ?? '');
+    setPhysicalAddress(s.physical_address ?? '');
+    setMinOrder((s.min_order_amount ?? 3000).toString());
+    setPauseOrders(!!s.pause_orders);
+    setPauseMessage(s.pause_message ?? '');
+    setOpeningHours(s.opening_hours ?? '');
+
+    setHeroHeadline(s.hero_headline ?? '');
+    setHeroSubheadline(s.hero_subheadline ?? '');
+    setHeroVideoUrl(s.hero_video_url ?? '');
+    setHeroPosterUrl(s.hero_poster_url ?? '');
+    setAboutStory(s.about_story ?? '');
+    setInstagramHandle(s.instagram_handle ?? '');
+  };
+
+  const refreshFromCloud = async () => {
+    setIsLoadingCloud(true);
+    try {
+      const fresh = await DBStore.fetchSettingsFromCloud();
+      setSettings(fresh);
+      populateFormFields(fresh);
+    } finally {
+      setIsLoadingCloud(false);
+    }
+  };
+
   useEffect(() => {
-    const unsub = storeEvents.subscribe('settings', () => {
-      setSettings(DBStore.getSettings());
+    let mounted = true;
+    setIsLoadingCloud(true);
+
+    DBStore.fetchSettingsFromCloud()
+      .then((cloudData) => {
+        if (mounted && cloudData) {
+          setSettings(cloudData);
+          populateFormFields(cloudData);
+        }
+      })
+      .catch((err) => {
+        console.warn('Initial cloud settings fetch failed', err);
+      })
+      .finally(() => {
+        if (mounted) setIsLoadingCloud(false);
+      });
+
+    const unsubSettings = storeEvents.subscribe('settings', () => {
+      const fresh = DBStore.getSettings();
+      setSettings(fresh);
+      populateFormFields(fresh);
     });
-    return unsub;
+
+    const unsubCategories = storeEvents.subscribe('categories', () => {
+      setCategories(DBStore.getCategories());
+    });
+
+    const unsubZones = storeEvents.subscribe('zones', () => {
+      setDeliveryZones(DBStore.getDeliveryZones());
+    });
+
+    return () => {
+      mounted = false;
+      unsubSettings();
+      unsubCategories();
+      unsubZones();
+    };
   }, []);
 
-  const handleSavePaymentSettings = (e: React.FormEvent) => {
+  const handleSavePaymentSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    DBStore.updateSettings({
+    setIsSaving(true);
+    setSaveError(null);
+
+    const res = await DBStore.updateSettings({
       bank_name: bankName,
       bank_account_name: bankAccountName,
       bank_account_number: bankAccountNumber,
       bank_payment_instructions: bankInstructions,
       enable_cash_on_delivery: enableCod,
     });
-    showSaveFeedback();
+
+    setIsSaving(false);
+    if (res.success) {
+      showSaveFeedback();
+    } else {
+      setSaveError(res.error || 'Failed to save bank settings to Supabase.');
+    }
   };
 
-  const handleSaveBusinessSettings = (e: React.FormEvent) => {
+  const handleSaveBusinessSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    DBStore.updateSettings({
+    setIsSaving(true);
+    setSaveError(null);
+
+    const res = await DBStore.updateSettings({
       store_name: storeName,
       tagline,
       phone_number: phoneNumber,
@@ -104,12 +195,21 @@ function MoreContent() {
       pause_message: pauseMessage,
       opening_hours: openingHours,
     });
-    showSaveFeedback();
+
+    setIsSaving(false);
+    if (res.success) {
+      showSaveFeedback();
+    } else {
+      setSaveError(res.error || 'Failed to save business settings to Supabase.');
+    }
   };
 
-  const handleSaveStorefront = (e: React.FormEvent) => {
+  const handleSaveStorefront = async (e: React.FormEvent) => {
     e.preventDefault();
-    DBStore.updateSettings({
+    setIsSaving(true);
+    setSaveError(null);
+
+    const res = await DBStore.updateSettings({
       hero_headline: heroHeadline,
       hero_subheadline: heroSubheadline,
       hero_video_url: heroVideoUrl,
@@ -117,7 +217,13 @@ function MoreContent() {
       about_story: aboutStory,
       instagram_handle: instagramHandle,
     });
-    showSaveFeedback();
+
+    setIsSaving(false);
+    if (res.success) {
+      showSaveFeedback();
+    } else {
+      setSaveError(res.error || 'Failed to save storefront settings to Supabase.');
+    }
   };
 
   const handleAddCategory = (e: React.FormEvent) => {
@@ -191,17 +297,44 @@ function MoreContent() {
             Settings & Operations
           </h1>
           <p className="text-xs text-espresso/60 dark:text-ivory/60">
-            Configure Nigerian bank details, delivery zones, hero video, and categories.
+            Configure Nigerian bank details, delivery zones, hero video, and categories. All changes sync directly to Supabase.
           </p>
         </div>
 
-        {savedNotice && (
-          <div className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md animate-in fade-in duration-200">
-            <Check className="w-4 h-4" />
-            <span>Settings Saved Successfully!</span>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={refreshFromCloud}
+            disabled={isLoadingCloud}
+            className="px-3.5 py-2 rounded-xl bg-ivory dark:bg-espresso-800 border border-caramel/25 text-espresso/80 dark:text-ivory/80 text-xs font-semibold hover:border-caramel transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+            title="Fetch latest saved settings from Supabase database"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingCloud ? 'animate-spin text-caramel' : ''}`} />
+            <span>{isLoadingCloud ? 'Syncing...' : 'Sync with Supabase'}</span>
+          </button>
+
+          {savedNotice && (
+            <div className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md animate-in fade-in duration-200">
+              <Check className="w-4 h-4" />
+              <span>Settings Saved & Synced!</span>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Error Alert Banner if persistence failed */}
+      {saveError && (
+        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs flex items-start gap-3 shadow-sm animate-in fade-in duration-200">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-bold">Database Persistence Notice</p>
+            <p>{saveError}</p>
+            <p className="text-[11px] opacity-80">
+              If this error mentions permissions or RLS, please execute the SQL script in <code className="bg-black/10 px-1 py-0.5 rounded">supabase/admin_settings_migration.sql</code> in your Supabase SQL Editor.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Tabs Bar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none border-b border-caramel/15">
@@ -325,10 +458,11 @@ function MoreContent() {
             <div className="pt-4 flex justify-end">
               <button
                 type="submit"
-                className="px-6 py-3 rounded-xl bg-caramel text-ivory font-semibold hover:bg-caramel-600 transition-colors shadow-sm flex items-center gap-2"
+                disabled={isSaving}
+                className="px-6 py-3 rounded-xl bg-caramel text-ivory font-semibold hover:bg-caramel-600 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50"
               >
-                <Save className="w-4 h-4" />
-                <span>Save Bank Details</span>
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>{isSaving ? 'Saving to Database...' : 'Save Bank Details'}</span>
               </button>
             </div>
           </form>
@@ -478,10 +612,11 @@ function MoreContent() {
             <div className="pt-2 flex justify-end">
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-caramel text-ivory font-semibold hover:bg-caramel-600 transition-colors shadow-sm flex items-center gap-2"
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-xl bg-caramel text-ivory font-semibold hover:bg-caramel-600 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50"
               >
-                <Save className="w-4 h-4" />
-                <span>Save Business Settings</span>
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>{isSaving ? 'Saving to Database...' : 'Save Business Settings'}</span>
               </button>
             </div>
           </form>
@@ -666,10 +801,11 @@ function MoreContent() {
             <div className="pt-2 flex justify-end">
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-caramel text-ivory font-semibold hover:bg-caramel-600 transition-colors shadow-sm flex items-center gap-2"
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-xl bg-caramel text-ivory font-semibold hover:bg-caramel-600 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50"
               >
-                <Save className="w-4 h-4" />
-                <span>Publish Storefront Changes</span>
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>{isSaving ? 'Publishing to Database...' : 'Publish Storefront Changes'}</span>
               </button>
             </div>
           </form>

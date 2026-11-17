@@ -22,7 +22,7 @@ import {
   Edit,
   ShoppingBag,
 } from 'lucide-react';
-import { DBStore, storeEvents } from '@/lib/store';
+import { DBStore, storeEvents, useStoreSettings } from '@/lib/store';
 import {
   formatCurrency,
   formatDate,
@@ -37,7 +37,7 @@ function OrdersContent() {
   const initialOrderId = searchParams.get('id');
 
   const [orders, setOrders] = useState<Order[]>(DBStore.getOrders());
-  const [settings, setSettings] = useState(DBStore.getSettings());
+  const settings = useStoreSettings();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>(filterParam === 'verification' ? 'verification' : 'all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);

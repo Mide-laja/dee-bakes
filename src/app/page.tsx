@@ -18,11 +18,11 @@ import {
 import { HeroSection } from '@/components/home/HeroSection';
 import { ProductCard } from '@/components/products/ProductCard';
 import { ProductModal } from '@/components/products/ProductModal';
-import { DBStore, storeEvents } from '@/lib/store';
+import { DBStore, storeEvents, useStoreSettings } from '@/lib/store';
 import { Product } from '@/types';
 
 export default function HomePage() {
-  const [settings, setSettings] = useState(DBStore.getSettings());
+  const settings = useStoreSettings();
   const [products, setProducts] = useState(DBStore.getProducts());
   const [categories, setCategories] = useState(DBStore.getCategories());
   const [testimonials, setTestimonials] = useState(DBStore.getTestimonials());
@@ -31,11 +31,9 @@ export default function HomePage() {
   const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
-    const unsubSettings = storeEvents.subscribe('settings', () => setSettings(DBStore.getSettings()));
     const unsubProducts = storeEvents.subscribe('products', () => setProducts(DBStore.getProducts()));
     const unsubCategories = storeEvents.subscribe('categories', () => setCategories(DBStore.getCategories()));
     return () => {
-      unsubSettings();
       unsubProducts();
       unsubCategories();
     };

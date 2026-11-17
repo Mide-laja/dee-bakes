@@ -17,23 +17,21 @@ import {
   ChevronRight,
   ShieldCheck,
 } from 'lucide-react';
-import { DBStore, storeEvents } from '@/lib/store';
+import { DBStore, storeEvents, useStoreSettings } from '@/lib/store';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Order } from '@/types';
 
 export default function AdminDashboardPage() {
   const [orders, setOrders] = useState<Order[]>(DBStore.getOrders());
   const [products, setProducts] = useState(DBStore.getProducts());
-  const [settings, setSettings] = useState(DBStore.getSettings());
+  const settings = useStoreSettings();
 
   useEffect(() => {
     const unsubO = storeEvents.subscribe('orders', () => setOrders(DBStore.getOrders()));
     const unsubP = storeEvents.subscribe('products', () => setProducts(DBStore.getProducts()));
-    const unsubS = storeEvents.subscribe('settings', () => setSettings(DBStore.getSettings()));
     return () => {
       unsubO();
       unsubP();
-      unsubS();
     };
   }, []);
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
   Category,
   Customer,
@@ -52,6 +53,27 @@ class StoreEventEmitter {
 }
 
 export const storeEvents = new StoreEventEmitter();
+
+/**
+ * Custom React hook to subscribe to live store settings.
+ * Automatically synchronizes whenever admin settings change or are fetched from Supabase.
+ */
+export function useStoreSettings(): StoreSettings {
+  const [settings, setSettings] = useState<StoreSettings>(() => {
+    if (typeof window === 'undefined') return DEFAULT_STORE_SETTINGS;
+    return safeGetItem<StoreSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_STORE_SETTINGS);
+  });
+
+  useEffect(() => {
+    setSettings(safeGetItem<StoreSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_STORE_SETTINGS));
+    const unsubscribe = storeEvents.subscribe('settings', () => {
+      setSettings(safeGetItem<StoreSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_STORE_SETTINGS));
+    });
+    return unsubscribe;
+  }, []);
+
+  return settings;
+}
 
 function safeGetItem<T>(key: string, defaultValue: T): T {
   if (typeof window === 'undefined') return defaultValue;
@@ -178,12 +200,8 @@ export const DBStore = {
     try {
       console.log('DEE BAKES: Initializing Cloud Sync with Supabase PostgreSQL...');
 
-      // 1. Fetch Store Settings
-      const { data: settingsData } = await supabase.from('store_settings').select('*').single();
-      if (settingsData) {
-        safeSetItem(STORAGE_KEYS.SETTINGS, { ...DEFAULT_STORE_SETTINGS, ...settingsData });
-        storeEvents.notify('settings');
-      }
+      // 1. Fetch Store Settings (via Cloud API / Supabase)
+      await this.fetchSettingsFromCloud();
 
       // 2. Fetch Categories
       const { data: catData } = await supabase.from('categories').select('*').order('display_order');
@@ -256,6 +274,20 @@ export const DBStore = {
             }));
             safeSetItem(STORAGE_KEYS.ORDERS, mappedOrders);
             storeEvents.notify('orders');
+          }
+        })
+        .subscribe();
+
+      // 6. Setup Realtime Subscription on store_settings
+      supabase
+        .channel('public:store_settings')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, (payload: any) => {
+          console.log('DEE BAKES: Realtime store_settings update detected from Supabase:', payload);
+          if (payload.new) {
+            const current = safeGetItem<StoreSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_STORE_SETTINGS);
+            const updated = { ...current, ...payload.new };
+            safeSetItem(STORAGE_KEYS.SETTINGS, updated);
+            storeEvents.notify('settings');
           }
         })
         .subscribe();
@@ -566,48 +598,157 @@ export const DBStore = {
     return safeGetItem<StoreSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_STORE_SETTINGS);
   },
 
-  updateSettings(settings: Partial<StoreSettings>): StoreSettings {
+  /**
+   * Fetches the latest business settings from the cloud (Server API or Supabase directly).
+   * Overwrites local cache and notifies all reactive subscribers.
+   */
+  async fetchSettingsFromCloud(): Promise<StoreSettings> {
     const current = this.getSettings();
-    const updated: StoreSettings = {
+    if (typeof window === 'undefined') return current;
+
+    try {
+      // 1. Try server API route first (supports secure Service Role key)
+      const res = await fetch('/api/admin/settings', { cache: 'no-store' });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.settings) {
+          const merged: StoreSettings = { ...DEFAULT_STORE_SETTINGS, ...json.settings };
+          safeSetItem(STORAGE_KEYS.SETTINGS, merged);
+          storeEvents.notify('settings');
+          return merged;
+        }
+      }
+    } catch {
+      // API fetch failed or offline; fallback to direct Supabase
+    }
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('store_settings')
+          .select('*')
+          .eq('id', 1)
+          .maybeSingle();
+
+        if (!error && data) {
+          const merged: StoreSettings = { ...DEFAULT_STORE_SETTINGS, ...data };
+          safeSetItem(STORAGE_KEYS.SETTINGS, merged);
+          storeEvents.notify('settings');
+          return merged;
+        }
+      } catch (err) {
+        console.warn('DEE BAKES: Error fetching settings from Supabase client', err);
+      }
+    }
+
+    return current;
+  },
+
+  /**
+   * Persists business settings to Supabase and notifies all reactive UI components.
+   * Returns a promise with success status and actual error message on failure.
+   */
+  async updateSettings(
+    settings: Partial<StoreSettings>
+  ): Promise<{ success: boolean; data?: StoreSettings; error?: string }> {
+    const current = this.getSettings();
+    const payload: StoreSettings = {
       ...current,
       ...settings,
       updated_at: new Date().toISOString(),
     };
-    safeSetItem(STORAGE_KEYS.SETTINGS, updated);
-    storeEvents.notify('settings');
 
-    if (isSupabaseConfigured() && supabase) {
-      supabase
-        .from('store_settings')
-        .upsert({
-          id: 1,
-          store_name: updated.store_name,
-          tagline: updated.tagline,
-          phone_number: updated.phone_number,
-          whatsapp_number: updated.whatsapp_number,
-          email: updated.email,
-          physical_address: updated.physical_address,
-          bank_name: updated.bank_name,
-          bank_account_name: updated.bank_account_name,
-          bank_account_number: updated.bank_account_number,
-          bank_payment_instructions: updated.bank_payment_instructions,
-          is_store_open: updated.is_store_open,
-          pause_orders: updated.pause_orders,
-          pause_message: updated.pause_message,
-          min_order_amount: updated.min_order_amount,
-          enable_cash_on_delivery: updated.enable_cash_on_delivery,
-          hero_headline: updated.hero_headline,
-          hero_subheadline: updated.hero_subheadline,
-          hero_video_url: updated.hero_video_url,
-          hero_poster_url: updated.hero_poster_url,
-          about_story: updated.about_story,
-          opening_hours: updated.opening_hours,
-          instagram_handle: updated.instagram_handle,
-        })
-        .then();
+    let lastError: string | null = null;
+
+    // 1. Attempt update via Server API route (uses Service Role Key if available, avoids client RLS hurdles)
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.settings) {
+          const merged: StoreSettings = { ...current, ...json.settings };
+          safeSetItem(STORAGE_KEYS.SETTINGS, merged);
+          storeEvents.notify('settings');
+          return { success: true, data: merged };
+        } else if (json.error) {
+          lastError = json.error;
+        }
+      } else {
+        const json = await res.json().catch(() => null);
+        lastError = json?.error || `Server API responded with HTTP status ${res.status}`;
+      }
+    } catch (err: any) {
+      lastError = err?.message || 'Network request failed';
     }
 
-    return updated;
+    // 2. Direct client fallback with Supabase (if API route wasn't reachable)
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const dbPayload = {
+          id: 1,
+          store_name: payload.store_name,
+          tagline: payload.tagline,
+          phone_number: payload.phone_number,
+          whatsapp_number: payload.whatsapp_number,
+          email: payload.email,
+          physical_address: payload.physical_address,
+          bank_name: payload.bank_name,
+          bank_account_name: payload.bank_account_name,
+          bank_account_number: payload.bank_account_number,
+          bank_payment_instructions: payload.bank_payment_instructions,
+          is_store_open: payload.is_store_open,
+          pause_orders: payload.pause_orders,
+          pause_message: payload.pause_message,
+          min_order_amount: payload.min_order_amount,
+          enable_cash_on_delivery: payload.enable_cash_on_delivery,
+          hero_headline: payload.hero_headline,
+          hero_subheadline: payload.hero_subheadline,
+          hero_video_url: payload.hero_video_url,
+          hero_poster_url: payload.hero_poster_url,
+          about_story: payload.about_story,
+          opening_hours: payload.opening_hours,
+          instagram_handle: payload.instagram_handle,
+          updated_at: payload.updated_at,
+        };
+
+        const { data, error } = await supabase
+          .from('store_settings')
+          .upsert(dbPayload, { onConflict: 'id' })
+          .select()
+          .single();
+
+        if (!error && data) {
+          const merged: StoreSettings = { ...current, ...data };
+          safeSetItem(STORAGE_KEYS.SETTINGS, merged);
+          storeEvents.notify('settings');
+          return { success: true, data: merged };
+        } else if (error) {
+          lastError = error.message;
+        }
+      } catch (err: any) {
+        lastError = err?.message || 'Database error occurred';
+      }
+    }
+
+    // 3. If Supabase is not configured (local dev offline mode), save locally
+    if (!isSupabaseConfigured()) {
+      safeSetItem(STORAGE_KEYS.SETTINGS, payload);
+      storeEvents.notify('settings');
+      return { success: true, data: payload };
+    }
+
+    // 4. Return explicit failure with the real error message
+    return {
+      success: false,
+      error:
+        lastError ||
+        'Failed to persist settings to Supabase. Please ensure the admin_settings_migration.sql script has been executed in your Supabase SQL editor.',
+    };
   },
 
   // --- DELIVERY ZONES ---

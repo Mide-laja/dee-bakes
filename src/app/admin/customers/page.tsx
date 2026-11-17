@@ -13,14 +13,14 @@ import {
   Clock,
   ArrowRight,
 } from 'lucide-react';
-import { DBStore, storeEvents } from '@/lib/store';
+import { DBStore, storeEvents, useStoreSettings } from '@/lib/store';
 import { formatCurrency, formatDate, createWhatsAppLink } from '@/lib/utils';
 import { Customer } from '@/types';
 
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>(DBStore.getCustomers());
   const [searchQuery, setSearchQuery] = useState('');
-  const settings = DBStore.getSettings();
+  const settings = useStoreSettings();
 
   useEffect(() => {
     const unsub = storeEvents.subscribe('orders', () => {

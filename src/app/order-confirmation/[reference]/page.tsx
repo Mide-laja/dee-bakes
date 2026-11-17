@@ -17,7 +17,7 @@ import {
   ArrowRight,
   ExternalLink,
 } from 'lucide-react';
-import { DBStore, storeEvents } from '@/lib/store';
+import { DBStore, storeEvents, useStoreSettings } from '@/lib/store';
 import {
   formatCurrency,
   formatDate,
@@ -31,7 +31,7 @@ export default function OrderConfirmationPage() {
   const reference = params?.reference as string;
 
   const [order, setOrder] = useState<Order | null>(null);
-  const [settings, setSettings] = useState(DBStore.getSettings());
+  const settings = useStoreSettings();
   const [copied, setCopied] = useState(false);
   const [transferRefInput, setTransferRefInput] = useState('');
   const [evidenceUrlInput, setEvidenceUrlInput] = useState('');

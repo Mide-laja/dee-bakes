@@ -30,7 +30,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { useCustomerAuth } from '@/context/CustomerAuthContext';
-import { DBStore, storeEvents } from '@/lib/store';
+import { DBStore, storeEvents, useStoreSettings } from '@/lib/store';
 import { Order, OrderStatus, PaymentStatus } from '@/types';
 import { formatCurrency, formatDate, createWhatsAppLink } from '@/lib/utils';
 import { Logo } from '@/components/brand/Logo';
@@ -68,7 +68,7 @@ export default function CustomerAccountPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
   // Settings for WhatsApp & support
-  const [settings] = useState(DBStore.getSettings());
+  const settings = useStoreSettings();
 
   // Protect Route
   useEffect(() => {

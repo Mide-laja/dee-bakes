@@ -20,7 +20,7 @@ import { Logo } from '@/components/brand/Logo';
 import { useCart } from '@/context/CartContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useCustomerAuth } from '@/context/CustomerAuthContext';
-import { DBStore, storeEvents } from '@/lib/store';
+import { DBStore, storeEvents, useStoreSettings } from '@/lib/store';
 import { createWhatsAppLink } from '@/lib/utils';
 
 export const Navbar: React.FC = () => {
@@ -33,7 +33,7 @@ export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [settings, setSettings] = useState(DBStore.getSettings());
+  const settings = useStoreSettings();
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -43,13 +43,6 @@ export const Navbar: React.FC = () => {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = storeEvents.subscribe('settings', () => {
-      setSettings(DBStore.getSettings());
-    });
-    return unsubscribe;
   }, []);
 
   // Close menus when navigating

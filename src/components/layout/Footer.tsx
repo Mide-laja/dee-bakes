@@ -13,10 +13,10 @@ import {
   ShieldCheck,
   Lock,
 } from 'lucide-react';
-import { DBStore } from '@/lib/store';
+import { useStoreSettings } from '@/lib/store';
 
 export const Footer: React.FC = () => {
-  const settings = DBStore.getSettings();
+  const settings = useStoreSettings();
 
   return (
     <footer className="bg-espresso-900 text-ivory border-t border-caramel/20 pt-16 pb-10 transition-colors">

@@ -4,12 +4,12 @@ import React, { useState } from 'react';
 import { Sparkles, Calendar, Cake, Check, ShoppingBag, MessageCircle, Info } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { formatCurrency, createWhatsAppLink } from '@/lib/utils';
-import { DBStore } from '@/lib/store';
+import { DBStore, useStoreSettings } from '@/lib/store';
 import { Product } from '@/types';
 
 export default function CustomCakesPage() {
   const { addToCart } = useCart();
-  const settings = DBStore.getSettings();
+  const settings = useStoreSettings();
 
   // Custom cake form state
   const [cakeSize, setCakeSize] = useState('8-inch Round (Serves 12-16)');

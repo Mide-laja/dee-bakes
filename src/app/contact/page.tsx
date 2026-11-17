@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import { Phone, Mail, MapPin, Clock, MessageCircle, Send, CheckCircle2 } from 'lucide-react';
-import { DBStore } from '@/lib/store';
+import { DBStore, useStoreSettings } from '@/lib/store';
 import { createWhatsAppLink } from '@/lib/utils';
 
 export default function ContactPage() {
-  const settings = DBStore.getSettings();
+  const settings = useStoreSettings();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');

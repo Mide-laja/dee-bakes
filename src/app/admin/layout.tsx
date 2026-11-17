@@ -19,7 +19,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { AdminAuthProvider, useAdminAuth } from '@/context/AdminAuthContext';
-import { DBStore, storeEvents } from '@/lib/store';
+import { DBStore, storeEvents, useStoreSettings } from '@/lib/store';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { Logo } from '@/components/brand/Logo';
 
@@ -27,14 +27,12 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAdminAuth();
-  const [settings, setSettings] = useState(DBStore.getSettings());
+  const settings = useStoreSettings();
   const [orders, setOrders] = useState(DBStore.getOrders());
 
   useEffect(() => {
-    const unsubS = storeEvents.subscribe('settings', () => setSettings(DBStore.getSettings()));
     const unsubO = storeEvents.subscribe('orders', () => setOrders(DBStore.getOrders()));
     return () => {
-      unsubS();
       unsubO();
     };
   }, []);

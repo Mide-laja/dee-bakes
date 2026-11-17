@@ -2,12 +2,12 @@
 
 import React, { useState } from 'react';
 import { MessageCircle, X, ChevronRight, Cake, ShoppingBag, HelpCircle } from 'lucide-react';
-import { DBStore } from '@/lib/store';
+import { DBStore, useStoreSettings } from '@/lib/store';
 import { createWhatsAppLink } from '@/lib/utils';
 
 export const WhatsAppButton: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const settings = DBStore.getSettings();
+  const settings = useStoreSettings();
 
   const handleQuickChat = (message: string) => {
     const link = createWhatsAppLink(settings.whatsapp_number, message);

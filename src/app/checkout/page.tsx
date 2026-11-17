@@ -23,14 +23,14 @@ import {
 import { useCart } from '@/context/CartContext';
 import { useCustomerAuth } from '@/context/CustomerAuthContext';
 import { formatCurrency, generateOrderReference } from '@/lib/utils';
-import { DBStore } from '@/lib/store';
+import { DBStore, useStoreSettings } from '@/lib/store';
 import { DeliveryZone, OrderType, PaymentMethod } from '@/types';
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, subtotal, clearCart } = useCart();
   const { user, customerProfile } = useCustomerAuth();
-  const settings = DBStore.getSettings();
+  const settings = useStoreSettings();
   const deliveryZones = DBStore.getDeliveryZones();
 
   // Form fields - prefilled if customer is logged in
