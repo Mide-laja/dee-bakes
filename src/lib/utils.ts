@@ -111,3 +111,87 @@ export function generateOrderReference(): string {
   const random = Math.floor(1000 + Math.random() * 9000);
   return `DB-${year}-${random}`;
 }
+
+/**
+ * Format any Supabase or network authentication error into a clear, user-friendly message.
+ * Prevents raw objects or "{}" from being rendered to the user.
+ */
+export function formatAuthErrorMessage(error: any): string {
+  if (!error) {
+    return 'An unexpected authentication error occurred. Please try again.';
+  }
+
+  // Handle plain string error
+  if (typeof error === 'string') {
+    const trimmed = error.trim();
+    if (trimmed === '' || trimmed === '{}' || trimmed === '[object Object]') {
+      return 'Database error saving user: Supabase encountered an issue while saving the user profile. Please verify your Supabase database triggers or contact support.';
+    }
+    return trimmed;
+  }
+
+  // Extract all common error properties from Supabase AuthError / Error objects
+  const message = error.message || error.error_description || error.description || error.msg;
+  const code = error.code || error.error;
+  const status = error.status || error.statusCode;
+
+  // Known Supabase error code patterns
+  if (
+    code === 'user_already_exists' ||
+    (typeof message === 'string' &&
+      (message.toLowerCase().includes('already registered') ||
+        message.toLowerCase().includes('user already exists')))
+  ) {
+    return 'An account with this email address already exists. Please log in instead or reset your password.';
+  }
+
+  if (
+    code === 'weak_password' ||
+    (typeof message === 'string' && message.toLowerCase().includes('password'))
+  ) {
+    if (typeof message === 'string' && message.length > 10 && message !== '{}') {
+      return message;
+    }
+    return 'Password is too weak. Please use at least 8 characters with letters and numbers.';
+  }
+
+  if (code === 'over_email_send_rate_limit') {
+    return 'Too many registration attempts. Supabase email limit reached. Please wait a few minutes before trying again.';
+  }
+
+  if (code === 'signup_disabled') {
+    return 'Signups are currently disabled in your Supabase project settings. Please enable email signups in the Supabase Dashboard.';
+  }
+
+  if (
+    code === 'invalid_credentials' ||
+    (typeof message === 'string' && message.toLowerCase().includes('invalid login credentials'))
+  ) {
+    return 'Incorrect email address or password. Please verify your credentials.';
+  }
+
+  if (
+    code === 'email_not_confirmed' ||
+    (typeof message === 'string' && message.toLowerCase().includes('email not confirmed'))
+  ) {
+    return 'Your email address has not been confirmed. Please check your inbox for the confirmation link.';
+  }
+
+  // Check if message is a clean, readable string
+  if (typeof message === 'string') {
+    const trimmed = message.trim();
+    if (trimmed && trimmed !== '{}' && trimmed !== '[object Object]') {
+      if (trimmed.toLowerCase().includes('database error saving new user')) {
+        return 'Database error saving new user: A database trigger in Supabase failed during registration. Please apply the updated supabase/fix_customer_signup.sql script in your Supabase SQL Editor.';
+      }
+      return trimmed;
+    }
+  }
+
+  // HTTP 500 error from GoTrue
+  if (status === 500) {
+    return 'Server database error (HTTP 500): Supabase failed to save the new user. This is usually caused by an unhandled database trigger on auth.users. Please update your database trigger in Supabase.';
+  }
+
+  return 'Unable to complete registration. Please check your network and try again.';
+}

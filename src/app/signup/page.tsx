@@ -18,6 +18,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useCustomerAuth } from '@/context/CustomerAuthContext';
+import { formatAuthErrorMessage } from '@/lib/utils';
 import { Logo } from '@/components/brand/Logo';
 
 export default function SignUpPage() {
@@ -118,7 +119,7 @@ export default function SignUpPage() {
       });
 
       if (!result.success) {
-        setErrorMsg(result.error || 'Failed to create account. Please try again.');
+        setErrorMsg(formatAuthErrorMessage(result.error));
         setLoading(false);
         return;
       }
@@ -137,7 +138,7 @@ export default function SignUpPage() {
         router.push('/account');
       }, 1500);
     } catch (err: any) {
-      setErrorMsg(err.message || 'An error occurred during registration.');
+      setErrorMsg(formatAuthErrorMessage(err));
       setLoading(false);
     }
   };
@@ -199,7 +200,20 @@ export default function SignUpPage() {
           {errorMsg && (
             <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-500/30 text-red-700 dark:text-red-300 text-sm flex items-start gap-3">
               <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-500" />
-              <span>{errorMsg}</span>
+              <div className="space-y-1">
+                <p className="leading-relaxed font-medium">{errorMsg}</p>
+                {errorMsg.toLowerCase().includes('already exists') && (
+                  <div className="pt-1">
+                    <Link
+                      href="/login"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-caramel hover:underline"
+                    >
+                      <span>Click here to Log In</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

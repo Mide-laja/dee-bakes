@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Customer } from '@/types';
+import { formatAuthErrorMessage } from '@/lib/utils';
 import { User, Session } from '@supabase/supabase-js';
 
 const LOCAL_STORAGE_SESSION_KEY = 'deebakes_customer_session_v1';
@@ -281,7 +282,7 @@ export const CustomerAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
         });
 
         if (error) {
-          return { success: false, error: error.message };
+          return { success: false, error: formatAuthErrorMessage(error) };
         }
 
         // If email confirmation is required and no session returned immediately
@@ -338,7 +339,7 @@ export const CustomerAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       return { success: false, error: 'Registration could not be completed.' };
     } catch (err: any) {
-      return { success: false, error: err.message || 'An unexpected error occurred during signup.' };
+      return { success: false, error: formatAuthErrorMessage(err) };
     }
   };
 
@@ -362,7 +363,7 @@ export const CustomerAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
         });
 
         if (error) {
-          return { success: false, error: error.message };
+          return { success: false, error: formatAuthErrorMessage(error) };
         }
 
         if (data.user) {
@@ -435,7 +436,7 @@ export const CustomerAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       return { success: false, error: 'Unable to sign in.' };
     } catch (err: any) {
-      return { success: false, error: err.message || 'An unexpected error occurred during sign in.' };
+      return { success: false, error: formatAuthErrorMessage(err) };
     }
   };
 
@@ -476,7 +477,7 @@ export const CustomerAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
         });
 
         if (error) {
-          return { success: false, error: error.message };
+          return { success: false, error: formatAuthErrorMessage(error) };
         }
 
         return {
@@ -505,7 +506,7 @@ export const CustomerAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
         });
 
         if (error) {
-          return { success: false, error: error.message };
+          return { success: false, error: formatAuthErrorMessage(error) };
         }
 
         return {
@@ -519,7 +520,7 @@ export const CustomerAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
         };
       }
     } catch (err: any) {
-      return { success: false, error: err.message || 'Error updating password.' };
+      return { success: false, error: formatAuthErrorMessage(err) };
     }
   };
 
@@ -560,7 +561,7 @@ export const CustomerAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
 
         const { data: authUpdate, error: authErr } = await supabase.auth.updateUser(updatePayload);
         if (authErr) {
-          return { success: false, error: authErr.message };
+          return { success: false, error: formatAuthErrorMessage(authErr) };
         }
 
         // Also update public.customers table
@@ -594,7 +595,7 @@ export const CustomerAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
         return { success: true, message: 'Profile updated successfully!' };
       }
     } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to update profile.' };
+      return { success: false, error: formatAuthErrorMessage(err) };
     }
   };
 
